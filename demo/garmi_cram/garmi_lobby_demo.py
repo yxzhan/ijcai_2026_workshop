@@ -3,7 +3,7 @@ GARMI transports a bowl and a spoon across the apartment.
 
 A copy of coraplex's ``coraplex/demos/coraplex_garmi_demo/demo.py`` (cognitive_robot_abstract_machine
 main, 2026-10-29) for the lobby: the GARMI in the lobby, behind
-``notebooks/garmi_lobby_bridge.py``, stands in for the real robot, so this runs with
+``demo/garmi_cram/garmi_lobby_bridge.py``, stands in for the real robot, so this runs with
 :class:`~coraplex.garmi_franka_grippers.RealGarmiPlanExecutor` by default, against
 giskardpy's ``garmi_velocity`` (closed loop). The lobby holds GARMI alone: the
 apartment, the bowl and the spoon are only in the plan's world. Changed from the
@@ -14,9 +14,9 @@ giskard's process, which cannot load a ``SceneBody`` of this script's ``__main__
 to read them back. The rest is as it was.
 
 Run with the cognitive_robot_abstract_machine venv, ROS Jazzy and its ros2_ws
-sourced, the bridge and giskard running (see ``notebooks/garmi_lobby_bridge.py``)::
+sourced, the bridge and giskard running (see ``demo/garmi_cram/garmi_lobby_bridge.py``)::
 
-    python notebooks/garmi_lobby_demo.py
+    python demo/garmi_cram/garmi_lobby_demo.py
 
 The bowl starts on the kitchen counter and the spoon inside a drawer, and both are carried
 to the table. Running with

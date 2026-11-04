@@ -66,7 +66,7 @@ RUN sudo apt-get update && \
 COPY --chown=${NB_USER}:users binder/cram_python_wrapper.sh /home/jovyan/.local/bin/cram_python_wrapper.sh
 COPY --chown=${NB_USER}:users binder/cram-kernel.json /opt/conda/share/jupyter/kernels/cram/kernel.json
 COPY --chown=${NB_USER}:users binder ${REPO_DIR}/binder
-COPY --chown=${NB_USER}:users notebooks ${REPO_DIR}/notebooks
+COPY --chown=${NB_USER}:users demo ${REPO_DIR}/demo
 
 RUN git config --global --add safe.directory ${REPO_DIR}
 

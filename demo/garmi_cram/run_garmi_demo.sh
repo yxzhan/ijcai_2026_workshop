@@ -1,26 +1,25 @@
 #!/bin/bash
-# Starts everything the GARMI demo needs and then the demo itself:
+# Starts what the GARMI demo needs and then the demo itself (rosbridge, which
+# the lobby's ROS panel connects to, is started by binder/entrypoint.sh):
 #
-#   1. rosbridge (port 9090): the lobby's ROS panel connects to it;
-#   2. waits for the lobby's GARMI (its <prefix>/joint_states on ROS): in the
+#   1. waits for the lobby's GARMI (its <prefix>/joint_states on ROS): in the
 #      lobby, spawn GARMI alone, switch its IK off (Teleop panel) and its ROS on
-#      (ROS panel, this rosbridge's address);
-#   3. garmi_lobby_bridge.py: the real GARMI's ROS interface on top of it;
-#   4. giskard (garmi_velocity), until its .../command action is up;
-#   5. garmi_lobby_demo.py, in the foreground.
+#      (ROS panel, the rosbridge's address);
+#   2. garmi_lobby_bridge.py: the real GARMI's ROS interface on top of it;
+#   3. giskard (garmi_velocity), until its .../command action is up;
+#   4. garmi_lobby_demo.py, in the foreground.
 #
 # Ctrl-C (or the demo ending) stops them all. Their logs are in $LOG_DIR.
 #
-#   notebooks/run_garmi_demo.sh [--lobby r1] [--start -4.8 1.5 3.1416]
+#   demo/garmi_cram/run_garmi_demo.sh [--lobby r1] [--start -4.8 1.5 3.1416]
 #
-# The options go to garmi_lobby_bridge.py. Environment: ROSBRIDGE_PORT (9090),
-# LOG_DIR (~/.garmi_demo), WAIT (s to wait for each step, 300).
+# The options go to garmi_lobby_bridge.py. Environment: LOG_DIR (~/.garmi_demo),
+# WAIT (s to wait for each step, 300).
 
 set -u
 HERE="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 REPO_DIR="$(dirname "${HERE}")"
 PY="${HOME}/.local/bin/cram_python_wrapper.sh"   # ROS 2, ros2_ws and the CRAM venv
-ROSBRIDGE_PORT="${ROSBRIDGE_PORT:-9090}"
 LOG_DIR="${LOG_DIR:-${HOME}/.garmi_demo}"
 WAIT="${WAIT:-300}"
 
@@ -31,9 +30,12 @@ for ((i = 0; i < ${#args[@]}; i++)); do
     [ "${args[i]}" = "--lobby" ] && LOBBY="${args[i + 1]:-r1}"
 done
 
-# The same ROS environment as the wrapper, for ros2 and rosbridge.
+# The same ROS environment as the wrapper, for ros2 (its setup files read unset
+# variables: not under set -u).
+set +u
 source "${ROS_PATH:-/opt/ros/jazzy}/setup.bash"
 [ -f "${REPO_DIR}/ros2_ws/install/setup.bash" ] && source "${REPO_DIR}/ros2_ws/install/setup.bash"
+set -u
 export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-0}"
 export RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}"
 export ROS_AUTOMATIC_DISCOVERY_RANGE="${ROS_AUTOMATIC_DISCOVERY_RANGE:-LOCALHOST}"
@@ -78,8 +80,7 @@ wait_for() {
 has_topic() { ros2 topic list | grep -qx "$1"; }
 has_action() { ros2 action list | grep -q "$1"; }
 
-start rosbridge ros2 run rosbridge_server rosbridge_websocket --ros-args -p port:="${ROSBRIDGE_PORT}"
-wait_for "the lobby's GARMI (/${LOBBY}/joint_states; spawn GARMI, its ROS on, rosbridge port ${ROSBRIDGE_PORT})" \
+wait_for "the lobby's GARMI (/${LOBBY}/joint_states; spawn GARMI, switch its ROS on)" \
     has_topic "/${LOBBY}/joint_states"
 
 start bridge "${PY}" "${HERE}/garmi_lobby_bridge.py" "$@"

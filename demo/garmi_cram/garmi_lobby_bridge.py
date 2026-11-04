@@ -2,7 +2,7 @@
 """The real GARMI's ROS interface on top of the lobby's ROS bridge, so that
 giskardpy's GarmiVelocityInterface (garmi_velocity.py, closed loop) and
 coraplex's RealGarmiPlanExecutor drive a GARMI in the lobby as they drive the
-robot: notebooks/garmi_lobby_demo.py runs the apartment demo against it.
+robot: demo/garmi_cram/garmi_lobby_demo.py runs the apartment demo against it.
 
     lobby (rosbridge, prefix r1)        this node                      giskard / coraplex
     r1/joint_states        ──►  rollers left out ──►  /garmi/joint_states
@@ -26,9 +26,9 @@ onto the hands' actuators. Then, with ROS Jazzy sourced (and franka_msgs on
 the path):
 
     ros2 run rosbridge_server rosbridge_websocket          # port 9090
-    python3 notebooks/garmi_lobby_bridge.py [--lobby r1] [--start -4.8 1.5 3.1416]
+    python3 demo/garmi_cram/garmi_lobby_bridge.py [--lobby r1] [--start -4.8 1.5 3.1416]
     python -m giskardpy.middleware.ros2.scripts.other_robots.garmi.garmi_velocity   # CRAM venv
-    python notebooks/garmi_lobby_demo.py                                               # CRAM venv
+    python demo/garmi_cram/garmi_lobby_demo.py                                               # CRAM venv
 """
 
 import argparse
