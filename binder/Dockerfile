@@ -69,14 +69,21 @@ RUN sudo apt-get update && \
 # - The base image's ROS (2025) upgraded to the current Jazzy snapshot: the
 #   packages installed above come from that snapshot and are built against
 #   newer core libraries; on the old ones rosbridge_msgs fails to load
-#   (undefined symbol eprosima::fastcdr::Cdr::serialize, fastcdr 2.2.5). What
-#   was built above on the old ones (the CRAM workspace, franka_msgs,
-#   topic_based_ros2_control) runs on the upgraded ones.
+#   (undefined symbol eprosima::fastcdr::Cdr::serialize, fastcdr 2.2.5). The
+#   CRAM workspace built above runs on the upgraded ones; franka_msgs and
+#   topic_based_ros2_control are built again on them (topic_based_ros2_control
+#   as built before the upgrade crashed ros2_control_node on loading the FR3's
+#   hardware: segmentation fault in TopicBasedSystem::export_state_interfaces).
 # - six into the CRAM venv: krrood (ripple_down_rules) imports it.
 RUN sudo apt-get update && \
     sudo DEBIAN_FRONTEND=noninteractive apt-get install --only-upgrade -y \
         $(apt list --upgradable 2>/dev/null | grep -o '^ros-jazzy-[^/]*') && \
     sudo rm -rf /var/lib/apt/lists/* && \
+    cd ${REPO_DIR}/ros2_ws && \
+    bash -c "source /opt/ros/jazzy/setup.bash && source install/setup.bash && \
+        PATH=/usr/bin:\$PATH colcon build --merge-install --packages-select franka_msgs topic_based_ros2_control \
+            --cmake-args -DBUILD_TESTING=OFF" && \
+    rm -rf build log && \
     ${REPO_DIR}/cognitive_robot_abstract_machine/.venv/bin/pip install six
 
 COPY --chown=${NB_USER}:users binder/cram_python_wrapper.sh /home/jovyan/.local/bin/cram_python_wrapper.sh
