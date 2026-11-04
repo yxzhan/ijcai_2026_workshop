@@ -22,7 +22,30 @@ RUN git config --global --add safe.directory ${REPO_DIR}/cognitive_robot_abstrac
 
 RUN cd ${REPO_DIR}/cognitive_robot_abstract_machine && \
     ~/.local/bin/uv sync && \
-    .venv/bin/pip install nest_asyncio argcomplete usd-core
+    .venv/bin/pip install nest_asyncio argcomplete usd-core six
+
+#============= ROS packages from apt, before anything is built on them =============#
+# The base image's ROS (2025) is upgraded to the current Jazzy snapshot first,
+# all of it: a package installed from today's snapshot on top of the old ones
+# is built against newer core libraries and fails to load (rosbridge_msgs:
+# undefined symbol eprosima::fastcdr::Cdr::serialize with fastcdr 2.2.5). Done
+# before the CRAM workspace and the packages below are built, so they are built
+# against the same ROS.
+# The packages: rosbridge (the lobby's ROS panel connects to it, port 9090),
+# ros2_control and control_msgs (MultiDOFCommand, GARMI's arms' velocity
+# commands; the FR3's controllers) and what topic_based_ros2_control builds
+# against.
+RUN sudo apt-get update && \
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install --only-upgrade -y \
+        $(apt list --upgradable 2>/dev/null | grep -o '^ros-jazzy-[^/]*') && \
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        ros-jazzy-rosbridge-suite \
+        ros-jazzy-ros2-control \
+        ros-jazzy-ros2-controllers \
+        ros-jazzy-control-msgs \
+        ros-jazzy-parallel-gripper-controller \
+        ros-jazzy-angles && \
+    sudo rm -rf /var/lib/apt/lists/*
 
 RUN sudo apt-get update && \
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git-lfs && \
@@ -39,19 +62,8 @@ RUN sudo apt-get update && \
 #   - topic_based_ros2_control, built against this image's ros2_control (its
 #     binary package was built against an older one and crashes loading the
 #     hardware): the lobby's FR3 under ros2_control.
-# The apt packages: rosbridge (the lobby's ROS panel connects to it, port
-# 9090), ros2_control and control_msgs (MultiDOFCommand, the arms' velocity
-# commands) and what topic_based_ros2_control builds against.
-RUN sudo apt-get update && \
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        ros-jazzy-rosbridge-suite \
-        ros-jazzy-ros2-control \
-        ros-jazzy-ros2-controllers \
-        ros-jazzy-control-msgs \
-        ros-jazzy-parallel-gripper-controller \
-        ros-jazzy-angles && \
-    sudo rm -rf /var/lib/apt/lists/* && \
-    cd ${REPO_DIR}/ros2_ws/src && \
+# (Their apt dependencies are installed above.)
+RUN cd ${REPO_DIR}/ros2_ws/src && \
     git clone --filter=blob:none --no-checkout https://github.com/frankaemika/franka_ros2.git && \
     git -C franka_ros2 sparse-checkout set franka_msgs && \
     git -C franka_ros2 checkout 8c946641bdedaf20c35604d8bc5a809117e4ed6c && \
