@@ -81,7 +81,7 @@ RUN sudo apt-get update && \
     sudo rm -rf /var/lib/apt/lists/* && \
     cd ${REPO_DIR}/ros2_ws && \
     bash -c "source /opt/ros/jazzy/setup.bash && source install/setup.bash && \
-        PATH=/usr/bin:\$PATH colcon build --merge-install --packages-select franka_msgs topic_based_ros2_control \
+        colcon build --merge-install --packages-select franka_msgs topic_based_ros2_control \
             --cmake-args -DBUILD_TESTING=OFF" && \
     rm -rf build log && \
     ${REPO_DIR}/cognitive_robot_abstract_machine/.venv/bin/pip install six
