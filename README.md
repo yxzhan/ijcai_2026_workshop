@@ -18,6 +18,10 @@ here talk to them as to the real ones.
   - `garmi_lobby_demo.py`: coraplex's GARMI demo (a bowl and a spoon carried across the
     apartment) on that executor;
   - `run_garmi_demo.sh`: the bridge, giskard and the demo in one go.
+- `demo/tracy_cram/run_tracy_demo.sh`: CRAM's own Tracy demo (`coraplex_real_tracy`) as on the
+  real robot, against giskard in standalone mode (it simulates Tracy itself; no lobby needed).
+- `demo/tracy_roscontrol/`: the lobby's Tracy under ros2_control as the real one (a controller
+  manager per arm), driven by giskard's `tracy_velocity` and CRAM's Tracy demo.
 - `demo/fr3_roscontrol/`: the lobby's Franka FR3 with its hand under ros2_control, as
   franka_ros2 runs the real one, with the lobby as the hardware (`topic_based_ros2_control`).
   - `fr3.urdf`: its kinematic tree with the `<ros2_control>` block, made by `mjcf2urdf.py` from
@@ -55,6 +59,45 @@ By hand, the same in three terminals, each with the CRAM kernel's environment
 ```
 
 Each script's docstring has the details (`--lobby r1`, `--start x y yaw`).
+
+## Tracy and CRAM (giskard standalone)
+
+```bash
+demo/tracy_cram/run_tracy_demo.sh
+```
+
+The demo starts giskard itself (`ros2 launch giskardpy_ros giskardpy_tracy_standalone.launch.py`),
+fetches its world over ROS and sends it the plan: park, then pick up two boxes and stack them on
+the third. The script puts the CRAM venv first on `PATH`: the nodes the launch file starts run
+`#!/usr/bin/env python3`, which would otherwise be conda's python, without giskardpy
+(`ModuleNotFoundError: No module named 'giskardpy'`).
+
+Known (CRAM 2026-11): giskard runs the plan (`Goal succeeded` in its log), but the demo can then
+hang: its copy of the world loses updates from giskard (`Updates #… were lost`, then
+`rustworkx.NoEdgeBetweenNodes`), which stops its ROS thread, so the goal's result never arrives.
+Ctrl-C ends the demo and its giskard.
+
+## Tracy on the lobby (ros2_control, giskard tracy_velocity)
+
+```bash
+demo/tracy_roscontrol/run_tracy_lobby_demo.sh
+# in the lobby: spawn Tracy, untick its IK (Teleop panel), switch its ROS on
+```
+
+The lobby's Tracy as the real one's hardware: `tracy_lobby.launch.py` puts iai_tracy's URDF
+(`iai_tracy_description`, in `ros2_ws`) on `/robot_description` and runs a controller manager
+per arm (`/left_arm/controller_manager`, `/right_arm/controller_manager`, each a joint state
+broadcaster and a `forward_velocity_controller`) on `topic_based_ros2_control`, on the lobby's
+`/robot_joint_states`. The lobby takes position targets only, so `tracy_lobby_relay.py`
+integrates the velocity commands into `/robot_joint_commands`, and republishes the grippers'
+joints on `/left_gripper/joint_states`, `/right_gripper/joint_states`. Then giskard
+(`tracy_velocity`) and `tracy_lobby_demo.py`: CRAM's Tracy demo without its standalone giskard.
+The boxes are in giskard's world only. Logs in `~/.tracy_demo/`.
+
+Known (CRAM 2026-11): giskard moves the arms, but the demo's copy of the world loses bursts of
+giskard's updates (`Updates #… were lost`), and the demo stops with
+`GiskardWorldUpdateNotReceivedError` 30 s into the first goal, as in standalone mode.
+Nothing in the lobby or ros2_control is involved.
 
 ## FR3 and ros2_control
 

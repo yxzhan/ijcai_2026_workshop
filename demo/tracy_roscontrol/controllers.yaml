@@ -1,0 +1,23 @@
+# ros2_control for the lobby's Tracy as the real one runs it: one controller
+# manager per arm (/left_arm, /right_arm), each with a joint state broadcaster
+# (/<arm>/joint_states) and the forward velocity controller giskardpy's
+# tracy_velocity commands (/<arm>/forward_velocity_controller/commands).
+/**/controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    forward_velocity_controller:
+      type: velocity_controllers/JointGroupVelocityController
+
+/left_arm/forward_velocity_controller:
+  ros__parameters:
+    joints: [left_shoulder_pan_joint, left_shoulder_lift_joint, left_elbow_joint,
+             left_wrist_1_joint, left_wrist_2_joint, left_wrist_3_joint]
+
+/right_arm/forward_velocity_controller:
+  ros__parameters:
+    joints: [right_shoulder_pan_joint, right_shoulder_lift_joint, right_elbow_joint,
+             right_wrist_1_joint, right_wrist_2_joint, right_wrist_3_joint]
