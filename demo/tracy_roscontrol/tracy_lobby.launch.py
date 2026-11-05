@@ -4,7 +4,7 @@ iai_tracy (iai_tracy_description's tracy.urdf.xacro, in ros2_ws) on
 states), a controller manager per arm (/left_arm/controller_manager,
 /right_arm/controller_manager) with topic_based_ros2_control as the hardware,
 each with a joint state broadcaster and a forward velocity controller, and
-tracy_lobby_relay.py (the velocities as the lobby's position targets, the
+../lobby_velocity_relay.py (the velocities as the lobby's position targets, the
 grippers' joint states). giskardpy's tracy_velocity drives that.
 
     source /opt/ros/jazzy/setup.bash && source ros2_ws/install/setup.bash
@@ -24,6 +24,8 @@ from launch.actions import ExecuteProcess
 from launch_ros.actions import Node
 
 HERE = pathlib.Path(__file__).resolve().parent
+# The arms' states as ros2_control reads them: the relay's targets (see lobby_velocity_relay.py --state-out).
+ARM_STATES = '/tracy/joint_states_for_control'
 ARM_JOINTS = ['shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint']
 
 
@@ -42,7 +44,7 @@ def with_arm_hardware(robot, side):
   block = ET.SubElement(robot, 'ros2_control', name=f'lobby_{side}_arm', type='system')
   hardware = ET.SubElement(block, 'hardware')
   ET.SubElement(hardware, 'plugin').text = 'topic_based_ros2_control/TopicBasedSystem'
-  for key, value in (('joint_states_topic', '/robot_joint_states'),
+  for key, value in (('joint_states_topic', ARM_STATES),
                      ('joint_commands_topic', f'/{side}_arm/joint_velocity_commands'),
                      ('trigger_joint_command_threshold', '-1')):  # always publish: it compares positions only
     ET.SubElement(hardware, 'param', name=key).text = value
@@ -60,7 +62,12 @@ def generate_launch_description():
       Node(package='robot_state_publisher', executable='robot_state_publisher',
            parameters=[{'robot_description': ET.tostring(robot, encoding='unicode')}],
            remappings=[('joint_states', '/robot_joint_states')], output='screen'),
-      ExecuteProcess(cmd=['python3', str(HERE / 'tracy_lobby_relay.py')], output='screen'),
+      ExecuteProcess(cmd=['python3', str(HERE.parent / 'lobby_velocity_relay.py'),
+                          '--velocity', '/left_arm/joint_velocity_commands',
+                          '--velocity', '/right_arm/joint_velocity_commands',
+                          '--state-out', ARM_STATES,
+                          '--republish', '/left_gripper/joint_states=left_robotiq_85_',
+                          '--republish', '/right_gripper/joint_states=right_robotiq_85_'], output='screen'),
   ]
   for side in ('left', 'right'):
     ns = f'{side}_arm'

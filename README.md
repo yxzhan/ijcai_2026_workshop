@@ -22,6 +22,10 @@ here talk to them as to the real ones.
   real robot, against giskard in standalone mode (it simulates Tracy itself; no lobby needed).
 - `demo/tracy_roscontrol/`: the lobby's Tracy under ros2_control as the real one (a controller
   manager per arm), driven by giskard's `tracy_velocity` and CRAM's Tracy demo.
+- `demo/fr3_giskard/`: the lobby's FR3 moved by giskardpy alone (no CRAM plans): a joint goal,
+  a Cartesian goal for the hand, its gripper action.
+- `demo/lobby_velocity_relay.py`: velocity commands of ros2_control as the lobby's position
+  targets (the lobby takes positions only), for the Tracy and FR3 giskard demos.
 - `demo/fr3_roscontrol/`: the lobby's Franka FR3 with its hand under ros2_control, as
   franka_ros2 runs the real one, with the lobby as the hardware (`topic_based_ros2_control`).
   - `fr3.urdf`: its kinematic tree with the `<ros2_control>` block, made by `mjcf2urdf.py` from
@@ -88,7 +92,7 @@ The lobby's Tracy as the real one's hardware: `tracy_lobby.launch.py` puts iai_t
 (`iai_tracy_description`, in `ros2_ws`) on `/robot_description` and runs a controller manager
 per arm (`/left_arm/controller_manager`, `/right_arm/controller_manager`, each a joint state
 broadcaster and a `forward_velocity_controller`) on `topic_based_ros2_control`, on the lobby's
-`/robot_joint_states`. The lobby takes position targets only, so `tracy_lobby_relay.py`
+`/robot_joint_states`. The lobby takes position targets only, so `demo/lobby_velocity_relay.py`
 integrates the velocity commands into `/robot_joint_commands`, and republishes the grippers'
 joints on `/left_gripper/joint_states`, `/right_gripper/joint_states`. Then giskard
 (`tracy_velocity`) and `tracy_lobby_demo.py`: CRAM's Tracy demo without its standalone giskard.
@@ -98,6 +102,28 @@ Known (CRAM 2026-11): giskard moves the arms, but the demo's copy of the world l
 giskard's updates (`Updates #… were lost`), and the demo stops with
 `GiskardWorldUpdateNotReceivedError` 30 s into the first goal, as in standalone mode.
 Nothing in the lobby or ros2_control is involved.
+
+## FR3 and giskardpy
+
+```bash
+demo/fr3_giskard/run_fr3_giskard_demo.sh
+# in the lobby: spawn Franka FR3 with hand, untick its IK (Teleop panel), switch its ROS on
+```
+
+giskardpy without CRAM's plans. `fr3_giskard.launch.py`: `../fr3_roscontrol/fr3.urdf` with the
+arm velocity commanded and FR3's velocity limits, the controller manager on
+`topic_based_ros2_control` (a `forward_velocity_controller` for the arm, `fr3_gripper` for the
+hand) and `demo/lobby_velocity_relay.py`. giskard is its generic
+`giskardpy.middleware.ros2.scripts.tutorial.universal_robot_velocity` (any robot whose
+`/controller_manager` runs a velocity controller, its URDF on `/robot_description`).
+`fr3_giskard_demo.py` sends it a joint goal (Franka's ready pose) and a `CartesianPose` for
+`fr3_hand`, and moves the hand with its gripper action. Logs in `~/.fr3_giskard_demo/`.
+
+ros2_control reads the arm's states from the relay (`--state-out`): its integrated targets,
+not the lobby's measurements. Through the network to the browser and back, those come a few
+hundred ms late, and giskard, closing its loop on them, overshoots and oscillates without
+reaching a goal. The lobby follows the targets; when the arm is idle and the lobby's arm is
+more than 0.1 rad from them (moved in the lobby), they are reset to it. The Tracy demo does the same.
 
 ## FR3 and ros2_control
 

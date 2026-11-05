@@ -45,18 +45,28 @@ pids=()
 stop() {
     trap - EXIT INT TERM
     echo "stopping: ${pids[*]}"
-    for p in "${pids[@]}"; do kill -INT "$p" 2>/dev/null; done
-    sleep 2
-    for p in "${pids[@]}"; do kill -TERM "$p" 2>/dev/null; done
+    # Each runs in a process group of its own (start): signal the group, so the
+    # nodes a launch file started stop too.
+    for p in "${pids[@]}"; do kill -INT -- "-$p" 2>/dev/null; done
+    for _ in $(seq 10); do
+        alive=0
+        for p in "${pids[@]}"; do kill -0 -- "-$p" 2>/dev/null && alive=1; done
+        [ "${alive}" = 0 ] && break
+        sleep 1
+    done
+    for p in "${pids[@]}"; do kill -TERM -- "-$p" 2>/dev/null; done
+    sleep 1
+    for p in "${pids[@]}"; do kill -KILL -- "-$p" 2>/dev/null; done
     wait 2>/dev/null
 }
 trap stop EXIT
 trap 'exit 130' INT TERM
 
-# start <name> <command...>: in the background, its output in $LOG_DIR/<name>.log
+# start <name> <command...>: in the background, in a process group of its own, its
+# output in $LOG_DIR/<name>.log
 start() {
     local name=$1; shift
-    "$@" > "${LOG_DIR}/${name}.log" 2>&1 &
+    setsid "$@" > "${LOG_DIR}/${name}.log" 2>&1 < /dev/null &
     pids+=($!)
     echo "${name}: pid $! (log ${LOG_DIR}/${name}.log)"
 }

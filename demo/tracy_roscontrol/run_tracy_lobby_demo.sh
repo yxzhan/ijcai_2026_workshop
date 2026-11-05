@@ -38,18 +38,28 @@ pids=()
 stop() {
     trap - EXIT INT TERM
     echo "stopping: ${pids[*]}"
-    for p in "${pids[@]}"; do kill -INT "$p" 2>/dev/null; done
-    sleep 3
-    for p in "${pids[@]}"; do kill -TERM "$p" 2>/dev/null; done
+    # Each runs in a process group of its own (start): signal the group, so the
+    # nodes a launch file started stop too.
+    for p in "${pids[@]}"; do kill -INT -- "-$p" 2>/dev/null; done
+    for _ in $(seq 10); do
+        alive=0
+        for p in "${pids[@]}"; do kill -0 -- "-$p" 2>/dev/null && alive=1; done
+        [ "${alive}" = 0 ] && break
+        sleep 1
+    done
+    for p in "${pids[@]}"; do kill -TERM -- "-$p" 2>/dev/null; done
+    sleep 1
+    for p in "${pids[@]}"; do kill -KILL -- "-$p" 2>/dev/null; done
     wait 2>/dev/null
 }
 trap stop EXIT
 trap 'exit 130' INT TERM
 
-# start <name> <command...>: in the background, its output in $LOG_DIR/<name>.log
+# start <name> <command...>: in the background, in a process group of its own, its
+# output in $LOG_DIR/<name>.log
 start() {
     local name=$1; shift
-    "$@" > "${LOG_DIR}/${name}.log" 2>&1 &
+    setsid "$@" > "${LOG_DIR}/${name}.log" 2>&1 < /dev/null &
     pids+=($!)
     echo "${name}: pid $! (log ${LOG_DIR}/${name}.log)"
 }
@@ -75,7 +85,7 @@ has_action() { ros2 action list | grep -q "$1"; }
 # A controller manager's controllers, all active.
 controllers_up() {
     local out
-    out=$(ros2 control list_controllers -c "$1" 2>/dev/null) || return 1
+    out=$(timeout 15 ros2 control list_controllers -c "$1" 2>/dev/null) || return 1
     [ "$(grep -c ' active' <<< "${out}")" -ge 2 ]
 }
 
