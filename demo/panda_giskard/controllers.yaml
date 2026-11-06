@@ -1,0 +1,18 @@
+# ros2_control for the Panda, for giskardpy: the arm's joints velocity
+# commanded (forward_velocity_controller, which giskard's
+# universal_robot_velocity finds and commands). The gripper is no controller
+# here: real_robot.ros2's action (/panda/hw/gripper_cmd); its finger joint
+# only read.
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    forward_velocity_controller:
+      type: velocity_controllers/JointGroupVelocityController
+
+forward_velocity_controller:
+  ros__parameters:
+    joints: [joint1, joint2, joint3, joint4, joint5, joint6, joint7]

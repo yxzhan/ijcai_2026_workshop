@@ -24,6 +24,9 @@ here talk to them as to the real ones.
   manager per arm), driven by giskard's `tracy_velocity` and CRAM's Tracy demo.
 - `demo/fr3_giskard/`: the lobby's FR3 moved by giskardpy alone (no CRAM plans): a joint goal,
   a Cartesian goal for the hand, its gripper action.
+- `demo/panda_giskard/`: a Franka Emika Panda (FER, Panda System 4.2.x) moved by giskardpy, the
+  same program for the real robot, a fake one and the lobby's: robot-lobby's
+  `real_robot.ros2` as the ros2_control hardware behind `topic_based_ros2_control`.
 - `demo/lobby_velocity_relay.py`: velocity commands of ros2_control as the lobby's position
   targets (the lobby takes positions only), for the Tracy and FR3 giskard demos.
 - `demo/fr3_roscontrol/`: the lobby's Franka FR3 with its hand under ros2_control, as
@@ -124,6 +127,46 @@ not the lobby's measurements. Through the network to the browser and back, those
 hundred ms late, and giskard, closing its loop on them, overshoots and oscillates without
 reaching a goal. The lobby follows the targets; when the arm is idle and the lobby's arm is
 more than 0.1 rad from them (moved in the lobby), they are reset to it. The Tracy demo does the same.
+
+## Panda and giskardpy (real, fake or the lobby's)
+
+```bash
+DRIVER=fake demo/panda_giskard/run_panda_giskard_demo.sh       # no hardware
+DRIVER=lobby demo/panda_giskard/run_panda_giskard_demo.sh      # the lobby's Panda, over rosbridge
+DRIVER=real IP=172.16.0.2 SPEED=0.2 demo/panda_giskard/run_panda_giskard_demo.sh
+```
+
+The FR3 demo's program for a Panda: a joint goal, a `CartesianPose` for `hand`, the gripper
+closed and opened, the ready pose again. `panda_giskard.launch.py`: `panda.urdf` (made by
+`mjcf2urdf.py` from the lobby's `mujoco_menagerie/franka_emika_panda/panda.xml`: `joint1..7`,
+`finger_joint1`, `link0`..`hand`; no collision geometry) with the arm velocity commanded at
+`SPEED` of the Panda's velocity limits, the controller manager on `topic_based_ros2_control`
+(`/panda/hw/...`) and a `forward_velocity_controller`; giskard is `universal_robot_velocity`
+as for the FR3.
+
+Behind the topics, robot-lobby's `python3 -m real_robot.ros2` (`LOBBY_DIR`: a robot-lobby
+checkout; by default the directory this repository sits in) integrates the velocities into
+position commands for its driver, through its safety layer (joint limits, `SPEED`, commands
+older than 0.3 s hold the robot, a fault when the robot falls 0.5 rad behind), and reports the
+commanded positions to ros2_control (giskard closes its loop on them, as with the lobby relay),
+the measured ones on `/panda/hw/measured_joint_states`. The gripper is its action
+`/panda/hw/gripper_cmd` (`control_msgs/ParallelGripperCommand`, `finger_joint1`: each finger's
+opening, 0-0.04 m), not a controller. The robot holds, disabled, until `/panda/hw/enable`
+(`std_srvs/SetBool`); the run script enables it, for `DRIVER=real` after asking (`YES=1`: not).
+
+- `DRIVER=real`: franky on libfranka 0.9.x (Panda System 4.2.x; libfranka >= 0.10 and
+  franka_ros2 are for the FR3), installed for the ROS python (its libfranka 0.9.2 wheels, see
+  robot-lobby's `real_robot/README.md`); a PREEMPT_RT kernel; FCI active in Desk. Each command
+  becomes a franky `JointMotion` (Ruckig, `DYNAMICS`: its `relative_dynamics_factor`).
+- `DRIVER=lobby`: in the lobby, spawn Franka Emika Panda, untick its IK (Teleop panel), switch
+  its ROS on (its profile's prefix `panda`: `/panda/joint_states`, `/panda/joint_command`),
+  its bridge a `rosbridge_server` on this ROS.
+
+Logs in `~/.panda_giskard_demo/`. Needs `topic_based_ros2_control` built against the installed
+ros2_control (this repository's `ros2_ws`, else robot-lobby's `ros_ws`), and matching
+ros2_control packages: a `ros-jazzy-controller-manager` newer than `ros-jazzy-hardware-interface`
+crashes the controller manager on start (segfault in `load_and_initialize_components`; the FR3
+demos too): `apt-get install --only-upgrade ros-jazzy-hardware-interface ros-jazzy-controller-interface`.
 
 ## FR3 and ros2_control
 

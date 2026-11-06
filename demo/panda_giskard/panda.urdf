@@ -1,0 +1,137 @@
+<?xml version="1.0"?>
+<!-- Made by demo/fr3_roscontrol/mjcf2urdf.py from panda.xml: its kinematic tree for ros2_control with the lobby as the hardware (topic_based_ros2_control). -->
+<robot name="panda">
+  <link name="world"/>
+  <link name="link0"/>
+  <link name="link1"/>
+  <link name="link2"/>
+  <link name="link3"/>
+  <link name="link4"/>
+  <link name="link5"/>
+  <link name="link6"/>
+  <link name="link7"/>
+  <link name="hand"/>
+  <link name="left_finger"/>
+  <link name="right_finger"/>
+  <joint name="link0_fixed" type="fixed">
+    <parent link="world"/>
+    <child link="link0"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+  <joint name="joint1" type="revolute">
+    <parent link="link0"/>
+    <child link="link1"/>
+    <origin xyz="0 0 0.333" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.8973" upper="2.8973" effort="1000" velocity="10"/>
+  </joint>
+  <joint name="joint2" type="revolute">
+    <parent link="link1"/>
+    <child link="link2"/>
+    <origin xyz="0 0 0" rpy="-1.57079633 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.7628" upper="1.7628" effort="1000" velocity="10"/>
+  </joint>
+  <joint name="joint3" type="revolute">
+    <parent link="link2"/>
+    <child link="link3"/>
+    <origin xyz="0 -0.316 0" rpy="1.57079633 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.8973" upper="2.8973" effort="1000" velocity="10"/>
+  </joint>
+  <joint name="joint4" type="revolute">
+    <parent link="link3"/>
+    <child link="link4"/>
+    <origin xyz="0.0825 0 0" rpy="1.57079633 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.0718" upper="-0.0698" effort="1000" velocity="10"/>
+  </joint>
+  <joint name="joint5" type="revolute">
+    <parent link="link4"/>
+    <child link="link5"/>
+    <origin xyz="-0.0825 0.384 0" rpy="-1.57079633 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.8973" upper="2.8973" effort="1000" velocity="10"/>
+  </joint>
+  <joint name="joint6" type="revolute">
+    <parent link="link5"/>
+    <child link="link6"/>
+    <origin xyz="0 0 0" rpy="1.57079633 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.0175" upper="3.7525" effort="1000" velocity="10"/>
+  </joint>
+  <joint name="joint7" type="revolute">
+    <parent link="link6"/>
+    <child link="link7"/>
+    <origin xyz="0.088 0 0" rpy="1.57079633 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.8973" upper="2.8973" effort="1000" velocity="10"/>
+  </joint>
+  <joint name="hand_fixed" type="fixed">
+    <parent link="link7"/>
+    <child link="hand"/>
+    <origin xyz="0 0 0.107" rpy="0 0 -0.785398128"/>
+  </joint>
+  <joint name="finger_joint1" type="prismatic">
+    <parent link="hand"/>
+    <child link="left_finger"/>
+    <origin xyz="0 0 0.0584" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0" upper="0.04" effort="1000" velocity="10"/>
+  </joint>
+  <joint name="finger_joint2" type="prismatic">
+    <parent link="hand"/>
+    <child link="right_finger"/>
+    <origin xyz="0 0 0.0584" rpy="0 0 3.14159265"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0" upper="0.04" effort="1000" velocity="10"/>
+    <mimic joint="finger_joint1" multiplier="1" offset="-0"/>
+  </joint>
+  <ros2_control name="lobby" type="system">
+    <hardware>
+      <plugin>topic_based_ros2_control/TopicBasedSystem</plugin>
+      <param name="joint_commands_topic">/robot_joint_commands</param>
+      <param name="joint_states_topic">/robot_joint_states</param>
+    </hardware>
+    <joint name="joint1">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint2">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint3">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint4">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint5">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint6">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint7">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="finger_joint1">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+</robot>
