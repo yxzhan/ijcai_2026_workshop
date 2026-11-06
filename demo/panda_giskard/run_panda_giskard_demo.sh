@@ -17,6 +17,7 @@
 # Their logs are in $LOG_DIR.
 #
 #   DRIVER=fake demo/panda_giskard/run_panda_giskard_demo.sh
+#   DRIVER=fake demo/panda_giskard/run_panda_giskard_demo.sh --cycles 0   # arguments: the demo's
 #   DRIVER=real IP=172.16.0.2 SPEED=0.2 demo/panda_giskard/run_panda_giskard_demo.sh
 #
 # Environment: DRIVER (fake), IP (172.16.0.2), SPEED (0.5: of the Panda's joint
@@ -59,6 +60,9 @@ set -u
 export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-0}"
 export RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}"
 export ROS_AUTOMATIC_DISCOVERY_RANGE="${ROS_AUTOMATIC_DISCOVERY_RANGE:-LOCALHOST}"
+
+# The demo's arguments checked before anything starts (or the robot is enabled).
+"${PY}" "${HERE}/panda_giskard_demo.py" "$@" --check || exit 1
 
 mkdir -p "${LOG_DIR}"
 pids=()
@@ -137,7 +141,7 @@ start giskard "${PY}" -m giskardpy.middleware.ros2.scripts.tutorial.universal_ro
 wait_for "giskard (its command action)" has_action '/command$'
 
 echo "demo:"
-"${PY}" "${HERE}/panda_giskard_demo.py"
+"${PY}" "${HERE}/panda_giskard_demo.py" "$@"
 status=$?
 echo "demo exited (${status})"
 exit "${status}"

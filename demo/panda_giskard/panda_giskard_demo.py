@@ -1,17 +1,31 @@
-"""Moves a Franka Emika Panda with giskardpy: a joint goal (Franka's ready
-pose), a Cartesian goal for the hand (15 cm forward and 10 cm down in
-link0, its orientation kept), then the hand closed and opened with the
-gripper action of robot-lobby's real_robot.ros2 (not giskard's: the hand is
-not velocity commanded), and the ready pose again. Prints where each goal
-ended. The same program for the real Panda, a fake one and the lobby's:
+"""Moves a Franka Emika Panda with giskardpy, its hand to positions given
+relative to the robot's base (link0: x forward, y left, z up, in m), the
+hand pointing down as in Franka's ready pose: from Franka's ready pose to a
+centre, then a small step up, down, forward, back, left and right of it
+(back to the centre after each), the hand closed and opened, the ready pose
+again. The same program for the real Panda, a fake one and the lobby's:
 panda_giskard.launch.py's driver picks which.
 
-Needs panda_giskard.launch.py and giskard (universal_robot_velocity)
-running, the robot enabled: run_panda_giskard_demo.sh does it all.
+    panda_giskard_demo.py                                # once, around 0.45 0 0.45, 5 cm steps
+    panda_giskard_demo.py --center 0.4 0.1 0.4 --step 0.03
+    panda_giskard_demo.py --cycles 0                     # the points again and again, until Ctrl-C
 
-    ~/.local/bin/cram_python_wrapper.sh demo/panda_giskard/panda_giskard_demo.py
+The position is the `hand` frame's (the hand's base on the flange; the
+fingertips are 0.10 m further along its z, here below it). Every point has to
+lie in a safe box (SAFE: x 0.25..0.65, |y| <= 0.35, z 0.25..0.65 in link0,
+the fingertips above the base's plane, the table), the step at most 0.10 m.
+
+The gripper is robot-lobby's real_robot.ros2 action (not giskard's: the hand
+is not velocity commanded).
+
+Needs panda_giskard.launch.py and giskard (universal_robot_velocity)
+running, the robot enabled: run_panda_giskard_demo.sh does it all and
+passes its arguments on:
+
+    DRIVER=fake demo/panda_giskard/run_panda_giskard_demo.sh --cycles 3
 """
 
+import argparse
 import math
 import sys
 import time
@@ -29,7 +43,12 @@ from semantic_digital_twin.adapters.ros import rospy
 
 ARM = [f'joint{i}' for i in range(1, 8)]
 READY = [0.0, -math.pi / 4, 0.0, -3 * math.pi / 4, 0.0, math.pi / 2, math.pi / 4]
-OFFSET = (0.15, 0.0, -0.10)  # m, the hand's Cartesian goal from where it is, in link0
+CENTER = (0.45, 0.0, 0.45)  # m, in link0
+STEP = 0.05                 # m
+MAX_STEP = 0.10             # m
+SAFE = ((0.25, 0.65), (-0.35, 0.35), (0.25, 0.65))  # x, y, z, m, in link0
+DIRECTIONS = [('up', (0, 0, 1)), ('down', (0, 0, -1)), ('forward', (1, 0, 0)),
+              ('back', (-1, 0, 0)), ('left', (0, 1, 0)), ('right', (0, -1, 0))]
 GRIPPER = '/panda/hw/gripper_cmd'
 
 
@@ -43,6 +62,20 @@ def quaternion(rotation):
   return x, y, z, w
 
 
+def points(center, step):
+  """[(name, xyz)]: the centre, then each direction's point and the centre again."""
+  c = np.array(center, dtype=float)
+  out = [('center', c)]
+  for name, d in DIRECTIONS:
+    out += [(name, c + step * np.array(d)), ('center', c)]
+  return out
+
+
+def unsafe(xyz):
+  return [f'{axis} {v:.3f} not in {lo}..{hi}'
+          for axis, v, (lo, hi) in zip('xyz', xyz, SAFE) if not lo <= v <= hi]
+
+
 class Demo:
   def __init__(self):
     rospy.init_node('panda_giskard_demo')
@@ -51,15 +84,16 @@ class Demo:
     self.base = self.world.get_body_by_name('link0')
     self.hand = self.world.get_body_by_name('hand')
     self.gripper = ActionClient(rospy.get_node(), ParallelGripperCommand, GRIPPER)
+    self.down = None  # the hand's orientation in the ready pose (x, y, z, w)
 
-  def run(self, goal, what):
+  def run(self, goal):
     statechart = Statechart(context=self.giskard.context)
     statechart.add_node(goal)
     statechart.add_node(EndMotion.when_true(goal))
     t0 = time.monotonic()
     self.giskard.compile(statechart)
     self.giskard.execute()
-    print(f'{what}: done in {time.monotonic() - t0:.1f} s', flush=True)
+    return time.monotonic() - t0
 
   def joints(self):
     return [self.world.get_connection_by_name(j).position for j in ARM]
@@ -67,20 +101,21 @@ class Demo:
   def hand_pose(self):
     return self.world.compute_forward_kinematics_np(self.base, self.hand)
 
-  def move_joints(self, positions, what):
-    self.run(JointPositionList(goal_state=JointState.from_str_dict(dict(zip(ARM, positions)), self.world)), what)
-    err = max(abs(a - b) for a, b in zip(self.joints(), positions))
-    print(f'  joints off by {err:.4f} rad at most', flush=True)
+  def ready(self, what='ready pose'):
+    t = self.run(JointPositionList(goal_state=JointState.from_str_dict(dict(zip(ARM, READY)), self.world)))
+    err = max(abs(a - b) for a, b in zip(self.joints(), READY))
+    print(f'{what}: done in {t:.1f} s, joints off by {err:.4f} rad at most', flush=True)
+    if self.down is None:
+      self.down = quaternion(self.hand_pose()[:3, :3])
 
-  def move_hand(self, offset, what):
-    start = self.hand_pose()
-    target = start[:3, 3] + np.array(offset)
-    qx, qy, qz, qw = quaternion(start[:3, :3])
-    goal = Pose.from_xyz_quaternion(*target, qx, qy, qz, qw, reference_frame=self.base)
-    self.run(CartesianPose(root_link=self.base, tip_link=self.hand, goal_pose=goal), what)
-    end = self.hand_pose()
-    print(f'  hand at {np.round(end[:3, 3], 3).tolist()} (goal {np.round(target, 3).tolist()}), '
-          f'off by {np.linalg.norm(end[:3, 3] - target) * 1000:.1f} mm', flush=True)
+  def move_hand(self, xyz, what):
+    """The hand to xyz in link0, pointing down."""
+    target = np.array(xyz, dtype=float)
+    goal = Pose.from_xyz_quaternion(*target, *self.down, reference_frame=self.base)
+    t = self.run(CartesianPose(root_link=self.base, tip_link=self.hand, goal_pose=goal))
+    end = self.hand_pose()[:3, 3]
+    print(f'{what}: done in {t:.1f} s, hand at {np.round(end, 3).tolist()} (goal {np.round(target, 3).tolist()}), '
+          f'off by {np.linalg.norm(end - target) * 1000:.1f} mm', flush=True)
 
   def grip(self, width, what):
     if not self.gripper.wait_for_server(timeout_sec=30.0):
@@ -104,13 +139,43 @@ class Demo:
 
 
 def main():
+  parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0], formatter_class=argparse.RawDescriptionHelpFormatter)
+  parser.add_argument('--center', nargs=3, type=float, metavar=('X', 'Y', 'Z'), default=CENTER,
+                      help=f'the hand\'s centre position in link0, m (default {CENTER})')
+  parser.add_argument('--step', type=float, default=STEP, help=f'm from the centre (default {STEP}, at most {MAX_STEP})')
+  parser.add_argument('--cycles', type=int, default=1, help='times through the points (0: until Ctrl-C)')
+  parser.add_argument('--check', action='store_true', help='only check the arguments (no ROS)')
+  args = parser.parse_args()
+  if not 0 < args.step <= MAX_STEP:
+    parser.error(f'--step: {args.step} not in 0..{MAX_STEP}')
+  path = points(args.center, args.step)
+  for name, p in path:
+    if problems := unsafe(p):
+      parser.error(f'{name} point {np.round(p, 3).tolist()} outside the safe box: {", ".join(problems)}')
+  if args.check:
+    return
+
   demo = Demo()
-  demo.move_joints(READY, 'ready pose')
-  demo.move_hand(OFFSET, 'hand forward and down')
-  demo.grip(0.0, 'close the hand')
-  demo.grip(0.04, 'open the hand')
-  demo.move_joints(READY, 'ready pose again')
-  rospy.shutdown()
+  try:
+    demo.ready()
+    cycle = 0
+    try:
+      while not args.cycles or cycle < args.cycles:
+        cycle += 1
+        for name, p in path[1:] if cycle > 1 else path:  # a cycle ends on the centre
+          demo.move_hand(p, f'#{cycle} {name}')
+    except KeyboardInterrupt:
+      print('stopped', flush=True)
+      try:  # the goal running when Ctrl-C came: giskard stops it
+        demo.giskard.cancel_goal_async()
+      except Exception:
+        pass
+      return
+    demo.grip(0.0, 'close the hand')
+    demo.grip(0.04, 'open the hand')
+    demo.ready('ready pose again')
+  finally:
+    rospy.shutdown()
 
 
 if __name__ == '__main__':

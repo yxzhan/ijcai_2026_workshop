@@ -136,8 +136,14 @@ DRIVER=lobby demo/panda_giskard/run_panda_giskard_demo.sh      # the lobby's Pan
 DRIVER=real IP=172.16.0.2 SPEED=0.2 demo/panda_giskard/run_panda_giskard_demo.sh
 ```
 
-The FR3 demo's program for a Panda: a joint goal, a `CartesianPose` for `hand`, the gripper
-closed and opened, the ready pose again. `panda_giskard.launch.py`: `panda.urdf` (made by
+The hand's positions are relative to the base (`link0`): a centre (`--center X Y Z`, default
+0.45 0 0.45 m) and a small step (`--step`, 5 cm, at most 10 cm) up, down, forward, back, left
+and right of it, back to the centre after each; `--cycles N` times (0: until Ctrl-C). Each
+point has to lie in a safe box (x 0.25-0.65, |y| <= 0.35, z 0.25-0.65), checked before
+anything starts; see `panda_giskard_demo.py --help`.
+
+The FR3 demo's program for a Panda: a joint goal, `CartesianPose` goals for `hand`, the
+gripper closed and opened, the ready pose again. `panda_giskard.launch.py`: `panda.urdf` (made by
 `mjcf2urdf.py` from the lobby's `mujoco_menagerie/franka_emika_panda/panda.xml`: `joint1..7`,
 `finger_joint1`, `link0`..`hand`; no collision geometry) with the arm velocity commanded at
 `SPEED` of the Panda's velocity limits, the controller manager on `topic_based_ros2_control`
