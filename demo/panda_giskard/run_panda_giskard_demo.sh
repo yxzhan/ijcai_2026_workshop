@@ -2,8 +2,9 @@
 # Starts what the Panda giskard demo needs and then the demo itself:
 #
 #   1. panda_giskard.launch.py: the URDF on /robot_description, the controller
-#      manager on /panda/hw/..., and robot-lobby's real_robot.ros2 behind it
-#      driving the Panda ($DRIVER: fake, real or lobby);
+#      manager on /panda/hw/..., and real_robot.ros2 (robot-lobby's real_robot
+#      package, installed for the ROS python: see below) behind it driving the
+#      Panda ($DRIVER: fake, real or lobby);
 #   2. waits for the robot's states (/panda/hw/joint_states; DRIVER=lobby: in the
 #      lobby, spawn Franka Emika Panda, untick its IK (Teleop panel), switch its
 #      ROS on, its bridge a rosbridge_server on this machine's ROS);
@@ -19,9 +20,15 @@
 #   DRIVER=real IP=172.16.0.2 SPEED=0.2 demo/panda_giskard/run_panda_giskard_demo.sh
 #
 # Environment: DRIVER (fake), IP (172.16.0.2), SPEED (0.5: of the Panda's joint
-# velocity limits), DYNAMICS (0.15: franky's), LOBBY_DIR (the robot-lobby
-# checkout with real_robot/; default: the directory this repository sits in),
-# LOG_DIR (~/.panda_giskard_demo), WAIT (s to wait for each step, 300), YES.
+# velocity limits), DYNAMICS (0.15: franky's), ROS_WS (a ROS workspace with
+# topic_based_ros2_control, its install/; default: this repository's
+# ros2_ws/install), LOG_DIR (~/.panda_giskard_demo), WAIT (s to wait for each
+# step, 300), YES.
+#
+# real_robot, for the ROS python (/usr/bin/python3; DRIVER=real: franky too):
+#
+#   /usr/bin/python3 -m pip install --user --break-system-packages \
+#     "git+https://github.com/yxzhan/robot-lobby@real-robot-bridge#subdirectory=real_robot"
 
 set -u
 HERE="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
@@ -33,18 +40,21 @@ DRIVER="${DRIVER:-fake}"
 IP="${IP:-172.16.0.2}"
 SPEED="${SPEED:-0.5}"
 DYNAMICS="${DYNAMICS:-0.15}"
-export LOBBY_DIR="${LOBBY_DIR:-$(dirname "${REPO_DIR}")}"
-[ -d "${LOBBY_DIR}/real_robot" ] || { echo "no real_robot/ in ${LOBBY_DIR}: set LOBBY_DIR to a robot-lobby checkout"; exit 1; }
+ROS_WS="${ROS_WS:-${REPO_DIR}/ros2_ws/install}"
+/usr/bin/python3 -c 'import real_robot.safety' 2> /dev/null || {
+    echo "no real_robot for the ROS python (/usr/bin/python3): install robot-lobby's real_robot package:"
+    echo '  /usr/bin/python3 -m pip install --user --break-system-packages "git+https://github.com/yxzhan/robot-lobby@real-robot-bridge#subdirectory=real_robot"'
+    exit 1
+}
 WAIT="${WAIT:-300}"
 
 # ROS for ros2 (its setup files read unset variables: not under set -u).
 set +u
 source "${ROS_PATH:-/opt/ros/jazzy}/setup.bash"
 # topic_based_ros2_control built against today's ros2_control (an older binary
-# package can crash the controller manager): this repository's ros2_ws, else
-# robot-lobby's ros_ws.
-if [ -f "${REPO_DIR}/ros2_ws/install/setup.bash" ]; then source "${REPO_DIR}/ros2_ws/install/setup.bash"
-elif [ -f "${LOBBY_DIR}/ros_ws/install/setup.bash" ]; then source "${LOBBY_DIR}/ros_ws/install/setup.bash"; fi
+# package can crash the controller manager): $ROS_WS.
+if [ -f "${ROS_WS}/setup.bash" ]; then source "${ROS_WS}/setup.bash"
+else echo "no ${ROS_WS}/setup.bash (ROS_WS): topic_based_ros2_control from the apt package, if any"; fi
 set -u
 export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-0}"
 export RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}"
@@ -107,7 +117,7 @@ controllers_up() {
 }
 
 start ros2_control ros2 launch "${HERE}/panda_giskard.launch.py" driver:="${DRIVER}" ip:="${IP}" \
-    speed:="${SPEED}" dynamics:="${DYNAMICS}" lobby_dir:="${LOBBY_DIR}"
+    speed:="${SPEED}" dynamics:="${DYNAMICS}"
 
 wait_for "the Panda's states (/panda/hw/joint_states, driver ${DRIVER})" \
     bash -c "timeout 5 ros2 topic echo --once /panda/hw/joint_states sensor_msgs/msg/JointState | grep -q joint1"

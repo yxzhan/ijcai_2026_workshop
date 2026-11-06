@@ -4,7 +4,8 @@ commanded and the Panda's velocity limits (times `speed`), the controller
 manager with topic_based_ros2_control as the hardware on /panda/hw/...,
 the joint state broadcaster and forward_velocity_controller; and behind
 those topics robot-lobby's real_robot ROS 2 front end (python3 -m
-real_robot.ros2), which drives
+real_robot.ros2; the real_robot package installed for the ROS python, see
+run_panda_giskard_demo.sh), which drives
 
     driver:=real    the real Panda (franky on libfranka 0.9.x, Panda System 4.2.x)
     driver:=fake    a simulated stand-in (no hardware, no lobby)
@@ -19,15 +20,11 @@ run_panda_giskard_demo.sh does.
     ros2 launch demo/panda_giskard/panda_giskard.launch.py driver:=fake
     ros2 launch demo/panda_giskard/panda_giskard.launch.py driver:=real ip:=172.16.0.2 speed:=0.2
 
-lobby_dir: the robot-lobby checkout with real_robot/ (default $LOBBY_DIR,
-else the directory this repository sits in).
-
 panda.urdf: made by ../fr3_roscontrol/mjcf2urdf.py from the lobby's
 mujoco_menagerie/franka_emika_panda/panda.xml (joint1..7, finger_joint1;
 link0..link7, hand): the kinematic tree only, no collision geometry.
 """
 
-import os
 import pathlib
 import sys
 import xml.etree.ElementTree as ET
@@ -42,7 +39,6 @@ ARM = [f'joint{i}' for i in range(1, 8)]
 HAND = 'finger_joint1'
 VELOCITY_LIMITS = [2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61]  # rad/s, the Panda datasheet's
 NS = '/panda/hw'
-LOBBY_DIR = os.environ.get('LOBBY_DIR') or str(HERE.parents[2])
 
 
 def panda_urdf(speed):
@@ -81,7 +77,7 @@ def nodes(context):
            parameters=[description, str(HERE / 'controllers.yaml')], output='screen'),
       spawner('joint_state_broadcaster'),
       spawner('forward_velocity_controller'),
-      ExecuteProcess(cmd=front, cwd=arg('lobby_dir'), output='screen'),
+      ExecuteProcess(cmd=front, output='screen'),
   ]
 
 
@@ -91,6 +87,5 @@ def generate_launch_description():
       DeclareLaunchArgument('ip', default_value='172.16.0.2', description='real: the Panda\'s FCI address'),
       DeclareLaunchArgument('speed', default_value='0.5', description='of the Panda\'s joint velocity limits (giskard and the front end)'),
       DeclareLaunchArgument('dynamics', default_value='0.15', description='real: franky\'s relative_dynamics_factor'),
-      DeclareLaunchArgument('lobby_dir', default_value=LOBBY_DIR, description='the robot-lobby checkout with real_robot/'),
       OpaqueFunction(function=nodes),
   ])

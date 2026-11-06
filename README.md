@@ -144,8 +144,7 @@ closed and opened, the ready pose again. `panda_giskard.launch.py`: `panda.urdf`
 (`/panda/hw/...`) and a `forward_velocity_controller`; giskard is `universal_robot_velocity`
 as for the FR3.
 
-Behind the topics, robot-lobby's `python3 -m real_robot.ros2` (`LOBBY_DIR`: a robot-lobby
-checkout; by default the directory this repository sits in) integrates the velocities into
+Behind the topics, `python3 -m real_robot.ros2` (robot-lobby's `real_robot` package) integrates the velocities into
 position commands for its driver, through its safety layer (joint limits, `SPEED`, commands
 older than 0.3 s hold the robot, a fault when the robot falls 0.5 rad behind), and reports the
 commanded positions to ros2_control (giskard closes its loop on them, as with the lobby relay),
@@ -154,16 +153,24 @@ the measured ones on `/panda/hw/measured_joint_states`. The gripper is its actio
 opening, 0-0.04 m), not a controller. The robot holds, disabled, until `/panda/hw/enable`
 (`std_srvs/SetBool`); the run script enables it, for `DRIVER=real` after asking (`YES=1`: not).
 
+`real_robot` is installed for the ROS python (the image has it, see `binder/Dockerfile`):
+
+```bash
+/usr/bin/python3 -m pip install --user --break-system-packages \
+  "git+https://github.com/yxzhan/robot-lobby@real-robot-bridge#subdirectory=real_robot"
+# or from a robot-lobby checkout, editable: ... -e <robot-lobby>/real_robot
+```
+
 - `DRIVER=real`: franky on libfranka 0.9.x (Panda System 4.2.x; libfranka >= 0.10 and
-  franka_ros2 are for the FR3), installed for the ROS python (its libfranka 0.9.2 wheels, see
-  robot-lobby's `real_robot/README.md`); a PREEMPT_RT kernel; FCI active in Desk. Each command
+  franka_ros2 are for the FR3), installed for the ROS python (a libfranka 0.9.2 wheel from
+  franky's GitHub releases; the image has v2.0.0's); a PREEMPT_RT kernel; FCI active in Desk. Each command
   becomes a franky `JointMotion` (Ruckig, `DYNAMICS`: its `relative_dynamics_factor`).
 - `DRIVER=lobby`: in the lobby, spawn Franka Emika Panda, untick its IK (Teleop panel), switch
   its ROS on (its profile's prefix `panda`: `/panda/joint_states`, `/panda/joint_command`),
   its bridge a `rosbridge_server` on this ROS.
 
 Logs in `~/.panda_giskard_demo/`. Needs `topic_based_ros2_control` built against the installed
-ros2_control (this repository's `ros2_ws`, else robot-lobby's `ros_ws`), and matching
+ros2_control (`ROS_WS`, by default this repository's `ros2_ws/install`), and matching
 ros2_control packages: a `ros-jazzy-controller-manager` newer than `ros-jazzy-hardware-interface`
 crashes the controller manager on start (segfault in `load_and_initialize_components`; the FR3
 demos too): `apt-get install --only-upgrade ros-jazzy-hardware-interface ros-jazzy-controller-interface`.
