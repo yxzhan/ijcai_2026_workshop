@@ -2,7 +2,7 @@
 # Starts what the Panda giskard demo needs and then the demo itself:
 #
 #   1. panda_giskard.launch.py: the URDF on /robot_description, the controller
-#      manager on /panda/hw/..., and real_robot.ros2 (robot-lobby's real_robot
+#      manager on /panda/hw/..., and robot_station.hw (robot-station's robot_station
 #      package, installed for the ROS python: see below) behind it driving the
 #      Panda ($DRIVER: fake, real or lobby);
 #   2. waits for the robot's states (/panda/hw/joint_states; DRIVER=lobby: in the
@@ -26,10 +26,10 @@
 # ros2_ws/install), LOG_DIR (~/.panda_giskard_demo), WAIT (s to wait for each
 # step, 300), YES.
 #
-# real_robot, for the ROS python (/usr/bin/python3; DRIVER=real: franky too):
+# robot_station, for the ROS python (/usr/bin/python3; DRIVER=real: franky too):
 #
 #   /usr/bin/python3 -m pip install --user --break-system-packages \
-#     "git+https://github.com/yxzhan/robot-lobby@real-robot-bridge#subdirectory=real_robot"
+#     "git+https://github.com/yxzhan/robot-station"
 
 set -u
 HERE="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
@@ -42,9 +42,9 @@ IP="${IP:-172.16.0.2}"
 SPEED="${SPEED:-0.5}"
 DYNAMICS="${DYNAMICS:-0.15}"
 ROS_WS="${ROS_WS:-${REPO_DIR}/ros2_ws/install}"
-/usr/bin/python3 -c 'import real_robot.safety' 2> /dev/null || {
-    echo "no real_robot for the ROS python (/usr/bin/python3): install robot-lobby's real_robot package:"
-    echo '  /usr/bin/python3 -m pip install --user --break-system-packages "git+https://github.com/yxzhan/robot-lobby@real-robot-bridge#subdirectory=real_robot"'
+/usr/bin/python3 -c 'import robot_station.safety' 2> /dev/null || {
+    echo "no robot_station for the ROS python (/usr/bin/python3): install robot-station:"
+    echo '  /usr/bin/python3 -m pip install --user --break-system-packages "git+https://github.com/yxzhan/robot-station"'
     exit 1
 }
 WAIT="${WAIT:-300}"

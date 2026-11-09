@@ -15,7 +15,7 @@ fingertips are 0.10 m further along its z, here below it). Every point has to
 lie in a safe box (SAFE: x 0.25..0.65, |y| <= 0.35, z 0.25..0.65 in link0,
 the fingertips above the base's plane, the table), the step at most 0.10 m.
 
-The gripper is robot-lobby's real_robot.ros2 action (not giskard's: the hand
+The gripper is robot-station's robot_station.hw action (not giskard's: the hand
 is not velocity commanded).
 
 Needs panda_giskard.launch.py and giskard (universal_robot_velocity)

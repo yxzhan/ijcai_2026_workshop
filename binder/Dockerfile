@@ -87,16 +87,17 @@ RUN sudo apt-get update && \
     ${REPO_DIR}/cognitive_robot_abstract_machine/.venv/bin/pip install six
 
 #============= The Panda (demo/panda_giskard) =============#
-# robot-lobby's real_robot package (the ros2_control hardware front end, its
-# drivers and safety layer) and franky on libfranka 0.9.2 (the real Panda,
-# Panda System 4.2.x), both for the ROS python, which runs `python3 -m
-# real_robot.ros2`. REAL_ROBOT: a pip requirement (a git ref, a path).
-ARG REAL_ROBOT="git+https://github.com/yxzhan/robot-lobby@real-robot-bridge#subdirectory=real_robot"
+# robot-station's robot_station package (github.com/yxzhan/robot-station: the
+# ros2_control hardware front end, its drivers and safety layer) and franky on
+# libfranka 0.9.2 (the real Panda, Panda System 4.2.x), both for the ROS python,
+# which runs `python3 -m robot_station.hw`. ROBOT_STATION: a pip requirement
+# (a git ref, a path).
+ARG ROBOT_STATION="git+https://github.com/yxzhan/robot-station"
 ARG FRANKY_WHEEL="https://github.com/TimSchneider42/franky/releases/download/v2.0.0/franky_control-2.0.0+libfranka.0.9.2-cp312-cp312-manylinux_2_34_x86_64.whl"
 RUN (/usr/bin/python3 -m pip --version > /dev/null 2>&1 || \
         (sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-pip && \
          sudo rm -rf /var/lib/apt/lists/*)) && \
-    /usr/bin/python3 -m pip install --user --break-system-packages --no-cache-dir "${REAL_ROBOT}" "${FRANKY_WHEEL}"
+    /usr/bin/python3 -m pip install --user --break-system-packages --no-cache-dir "${ROBOT_STATION}" "${FRANKY_WHEEL}"
 
 COPY --chown=${NB_USER}:users binder/cram_python_wrapper.sh /home/jovyan/.local/bin/cram_python_wrapper.sh
 COPY --chown=${NB_USER}:users binder/cram-kernel.json /opt/conda/share/jupyter/kernels/cram/kernel.json

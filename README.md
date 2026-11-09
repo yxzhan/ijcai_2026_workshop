@@ -25,8 +25,9 @@ here talk to them as to the real ones.
 - `demo/fr3_giskard/`: the lobby's FR3 moved by giskardpy alone (no CRAM plans): a joint goal,
   a Cartesian goal for the hand, its gripper action.
 - `demo/panda_giskard/`: a Franka Emika Panda (FER, Panda System 4.2.x) moved by giskardpy, the
-  same program for the real robot, a fake one and the lobby's: robot-lobby's
-  `real_robot.ros2` as the ros2_control hardware behind `topic_based_ros2_control`.
+  same program for the real robot, a fake one and the lobby's:
+  [robot-station](https://github.com/yxzhan/robot-station)'s `robot_station.hw` as the ros2_control
+  hardware behind `topic_based_ros2_control`.
 - `demo/lobby_velocity_relay.py`: velocity commands of ros2_control as the lobby's position
   targets (the lobby takes positions only), for the Tracy and FR3 giskard demos.
 - `demo/fr3_roscontrol/`: the lobby's Franka FR3 with its hand under ros2_control, as
@@ -150,7 +151,7 @@ gripper closed and opened, the ready pose again. `panda_giskard.launch.py`: `pan
 (`/panda/hw/...`) and a `forward_velocity_controller`; giskard is `universal_robot_velocity`
 as for the FR3.
 
-Behind the topics, `python3 -m real_robot.ros2` (robot-lobby's `real_robot` package) integrates the velocities into
+Behind the topics, `python3 -m robot_station.hw` (robot-station's `robot_station` package) integrates the velocities into
 position commands for its driver, through its safety layer (joint limits, `SPEED`, commands
 older than 0.3 s hold the robot, a fault when the robot falls 0.5 rad behind), and reports the
 commanded positions to ros2_control (giskard closes its loop on them, as with the lobby relay),
@@ -159,12 +160,11 @@ the measured ones on `/panda/hw/measured_joint_states`. The gripper is its actio
 opening, 0-0.04 m), not a controller. The robot holds, disabled, until `/panda/hw/enable`
 (`std_srvs/SetBool`); the run script enables it, for `DRIVER=real` after asking (`YES=1`: not).
 
-`real_robot` is installed for the ROS python (the image has it, see `binder/Dockerfile`):
+`robot_station` is installed for the ROS python (the image has it, see `binder/Dockerfile`):
 
 ```bash
-/usr/bin/python3 -m pip install --user --break-system-packages \
-  "git+https://github.com/yxzhan/robot-lobby@real-robot-bridge#subdirectory=real_robot"
-# or from a robot-lobby checkout, editable: ... -e <robot-lobby>/real_robot
+/usr/bin/python3 -m pip install --user --break-system-packages "git+https://github.com/yxzhan/robot-station"
+# or from a robot-station checkout, editable: ... -e <robot-station>
 ```
 
 - `DRIVER=real`: franky on libfranka 0.9.x (Panda System 4.2.x; libfranka >= 0.10 and

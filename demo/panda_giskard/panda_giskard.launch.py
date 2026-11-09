@@ -3,8 +3,8 @@
 commanded and the Panda's velocity limits (times `speed`), the controller
 manager with topic_based_ros2_control as the hardware on /panda/hw/...,
 the joint state broadcaster and forward_velocity_controller; and behind
-those topics robot-lobby's real_robot ROS 2 front end (python3 -m
-real_robot.ros2; the real_robot package installed for the ROS python, see
+those topics robot-station's ros2_control front end (python3 -m
+robot_station.hw; github.com/yxzhan/robot-station installed for the ROS python, see
 run_panda_giskard_demo.sh), which drives
 
     driver:=real    the real Panda (franky on libfranka 0.9.x, Panda System 4.2.x)
@@ -69,7 +69,7 @@ def nodes(context):
   description = {'robot_description': panda_urdf(speed)}
   spawner = lambda name: Node(package='controller_manager', executable='spawner',
                               arguments=[name, '--controller-manager-timeout', '60'], output='screen')
-  front = [sys.executable, '-m', 'real_robot.ros2', '--robot', 'panda', '--driver', arg('driver'), '--ns', NS,
+  front = [sys.executable, '-m', 'robot_station.hw', '--robot', 'panda', '--driver', arg('driver'), '--ns', NS,
            '--speed', str(speed), '--ip', arg('ip'), '--dynamics', arg('dynamics')]
   return [
       Node(package='robot_state_publisher', executable='robot_state_publisher', parameters=[description], output='screen'),
