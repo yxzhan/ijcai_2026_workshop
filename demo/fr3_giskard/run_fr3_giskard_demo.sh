@@ -4,7 +4,7 @@
 # binder/entrypoint.sh):
 #
 #   1. fr3_giskard.launch.py: the URDF on /robot_description, the controller
-#      manager on the lobby's topics, the velocity relay;
+#      manager on the lobby's topics;
 #   2. waits for the lobby's FR3 (/robot_joint_states): in the lobby, spawn
 #      Franka FR3 with hand, untick its IK (Teleop panel), switch its ROS on;
 #   3. giskard (universal_robot_velocity: any robot with a velocity controller

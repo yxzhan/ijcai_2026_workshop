@@ -3,9 +3,12 @@ iai_tracy (iai_tracy_description's tracy.urdf.xacro, in ros2_ws) on
 /robot_description with robot_state_publisher (TF from the lobby's joint
 states), a controller manager per arm (/left_arm/controller_manager,
 /right_arm/controller_manager) with topic_based_ros2_control as the hardware,
-each with a joint state broadcaster and a forward velocity controller, and
-../lobby_velocity_relay.py (the velocities as the lobby's position targets, the
-grippers' joint states). giskardpy's tracy_velocity drives that.
+each with a joint state broadcaster and a forward velocity controller: their
+velocity commands on the lobby's /robot_joint_commands, which the lobby
+integrates into its position targets, their states those targets, as the lobby
+publishes them on /tracy/joint_states_for_control (the grippers' joints it
+publishes on /left_gripper/joint_states and /right_gripper/joint_states, where
+CRAM reads them). giskardpy's tracy_velocity drives that.
 
     source /opt/ros/jazzy/setup.bash && source ros2_ws/install/setup.bash
     ros2 launch demo/tracy_roscontrol/tracy_lobby.launch.py
@@ -20,11 +23,11 @@ import xml.etree.ElementTree as ET
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess
 from launch_ros.actions import Node
 
 HERE = pathlib.Path(__file__).resolve().parent
-# The arms' states as ros2_control reads them: the relay's targets (see lobby_velocity_relay.py --state-out).
+# The arms' states as ros2_control reads them: the lobby's integrated targets (its ROS
+# profile's controlStates), so giskard does not close its loop through the network.
 ARM_STATES = '/tracy/joint_states_for_control'
 ARM_JOINTS = ['shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint']
 
@@ -45,7 +48,7 @@ def with_arm_hardware(robot, side):
   hardware = ET.SubElement(block, 'hardware')
   ET.SubElement(hardware, 'plugin').text = 'topic_based_ros2_control/TopicBasedSystem'
   for key, value in (('joint_states_topic', ARM_STATES),
-                     ('joint_commands_topic', f'/{side}_arm/joint_velocity_commands'),
+                     ('joint_commands_topic', '/robot_joint_commands'),  # velocities only: the lobby integrates them
                      ('trigger_joint_command_threshold', '-1')):  # always publish: it compares positions only
     ET.SubElement(hardware, 'param', name=key).text = value
   for joint in ARM_JOINTS:
@@ -62,12 +65,6 @@ def generate_launch_description():
       Node(package='robot_state_publisher', executable='robot_state_publisher',
            parameters=[{'robot_description': ET.tostring(robot, encoding='unicode')}],
            remappings=[('joint_states', '/robot_joint_states')], output='screen'),
-      ExecuteProcess(cmd=['python3', str(HERE.parent / 'lobby_velocity_relay.py'),
-                          '--velocity', '/left_arm/joint_velocity_commands',
-                          '--velocity', '/right_arm/joint_velocity_commands',
-                          '--state-out', ARM_STATES,
-                          '--republish', '/left_gripper/joint_states=left_robotiq_85_',
-                          '--republish', '/right_gripper/joint_states=right_robotiq_85_'], output='screen'),
   ]
   for side in ('left', 'right'):
     ns = f'{side}_arm'

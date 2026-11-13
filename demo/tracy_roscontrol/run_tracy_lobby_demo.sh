@@ -4,7 +4,7 @@
 # binder/entrypoint.sh):
 #
 #   1. tracy_lobby.launch.py: the URDF on /robot_description, a controller
-#      manager per arm on the lobby's topics, the velocity relay;
+#      manager per arm on the lobby's topics;
 #   2. waits for the lobby's Tracy (/robot_joint_states): in the lobby, spawn
 #      Tracy, untick its IK (Teleop panel), switch its ROS on (ROS panel);
 #   3. giskard (tracy_velocity), until its .../command action is up;

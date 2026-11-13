@@ -2,9 +2,10 @@
 ../fr3_roscontrol (robot_state_publisher, /robot_description) with the arm's
 joints velocity commanded and FR3's velocity limits, the controller manager
 with topic_based_ros2_control as the hardware (the arm's velocity commands
-on /fr3/joint_velocity_commands, which ../lobby_velocity_relay.py turns into
-the lobby's position targets, its states those targets; the hand's on the
-lobby's /robot_joint_commands and /robot_joint_states),
+on the lobby's /robot_joint_commands, which the lobby integrates into its
+position targets, its states those targets, as the lobby publishes them on
+/fr3/joint_states_for_control; the hand's on the lobby's
+/robot_joint_commands and /robot_joint_states),
 the joint state broadcaster, forward_velocity_controller and fr3_gripper.
 
     source /opt/ros/jazzy/setup.bash && source ros2_ws/install/setup.bash
@@ -18,15 +19,15 @@ import pathlib
 import xml.etree.ElementTree as ET
 
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess
 from launch_ros.actions import Node
 
 HERE = pathlib.Path(__file__).resolve().parent
 ARM = [f'fr3_joint{i}' for i in range(1, 8)]
 HAND = 'fr3_finger_joint1'
 VELOCITY_LIMITS = [2.62, 2.62, 2.62, 2.62, 5.26, 4.18, 5.26]  # rad/s, the FR3 datasheet's
-ARM_COMMANDS = '/fr3/joint_velocity_commands'
-# The arm's states as ros2_control reads them: the relay's targets (see lobby_velocity_relay.py --state-out).
+ARM_COMMANDS = '/robot_joint_commands'  # velocities only: the lobby integrates them
+# The arm's states as ros2_control reads them: the lobby's integrated targets (its ROS
+# profile's controlStates), so giskard does not close its loop through the network.
 ARM_STATES = '/fr3/joint_states_for_control'
 
 
@@ -67,7 +68,4 @@ def generate_launch_description():
       spawner('joint_state_broadcaster'),
       spawner('forward_velocity_controller'),
       spawner('fr3_gripper'),
-      ExecuteProcess(cmd=['python3', str(HERE.parent / 'lobby_velocity_relay.py'), '--velocity', ARM_COMMANDS,
-                          '--state-out', ARM_STATES],
-                     output='screen'),
   ])

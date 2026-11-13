@@ -28,8 +28,6 @@ here talk to them as to the real ones.
   same program for the real robot, a fake one and the lobby's:
   [robot-station](https://github.com/yxzhan/robot-station)'s `robot_station.hw` as the ros2_control
   hardware behind `topic_based_ros2_control`.
-- `demo/lobby_velocity_relay.py`: velocity commands of ros2_control as the lobby's position
-  targets (the lobby takes positions only), for the Tracy and FR3 giskard demos.
 - `demo/fr3_roscontrol/`: the lobby's Franka FR3 with its hand under ros2_control, as
   franka_ros2 runs the real one, with the lobby as the hardware (`topic_based_ros2_control`).
   - `fr3.urdf`: its kinematic tree with the `<ros2_control>` block, made by `mjcf2urdf.py` from
@@ -96,9 +94,9 @@ The lobby's Tracy as the real one's hardware: `tracy_lobby.launch.py` puts iai_t
 (`iai_tracy_description`, in `ros2_ws`) on `/robot_description` and runs a controller manager
 per arm (`/left_arm/controller_manager`, `/right_arm/controller_manager`, each a joint state
 broadcaster and a `forward_velocity_controller`) on `topic_based_ros2_control`, on the lobby's
-`/robot_joint_states`. The lobby takes position targets only, so `demo/lobby_velocity_relay.py`
-integrates the velocity commands into `/robot_joint_commands`, and republishes the grippers'
-joints on `/left_gripper/joint_states`, `/right_gripper/joint_states`. Then giskard
+`/robot_joint_states` and `/robot_joint_commands`: the lobby integrates the arms' velocity
+commands into its position targets itself, and publishes the grippers' joints on
+`/left_gripper/joint_states`, `/right_gripper/joint_states` (Tracy's ROS profile). Then giskard
 (`tracy_velocity`) and `tracy_lobby_demo.py`: CRAM's Tracy demo without its standalone giskard.
 The boxes are in giskard's world only. Logs in `~/.tracy_demo/`.
 
@@ -117,17 +115,22 @@ demo/fr3_giskard/run_fr3_giskard_demo.sh
 giskardpy without CRAM's plans. `fr3_giskard.launch.py`: `../fr3_roscontrol/fr3.urdf` with the
 arm velocity commanded and FR3's velocity limits, the controller manager on
 `topic_based_ros2_control` (a `forward_velocity_controller` for the arm, `fr3_gripper` for the
-hand) and `demo/lobby_velocity_relay.py`. giskard is its generic
+hand), its velocity commands on the lobby's `/robot_joint_commands`. giskard is its generic
 `giskardpy.middleware.ros2.scripts.tutorial.universal_robot_velocity` (any robot whose
 `/controller_manager` runs a velocity controller, its URDF on `/robot_description`).
 `fr3_giskard_demo.py` sends it a joint goal (Franka's ready pose) and a `CartesianPose` for
 `fr3_hand`, and moves the hand with its gripper action. Logs in `~/.fr3_giskard_demo/`.
 
-ros2_control reads the arm's states from the relay (`--state-out`): its integrated targets,
-not the lobby's measurements. Through the network to the browser and back, those come a few
-hundred ms late, and giskard, closing its loop on them, overshoots and oscillates without
-reaching a goal. The lobby follows the targets; when the arm is idle and the lobby's arm is
-more than 0.1 rad from them (moved in the lobby), they are reset to it. The Tracy demo does the same.
+The lobby integrates the velocity commands (a `sensor_msgs/JointState` with velocities and
+no positions, as `topic_based_ros2_control` sends velocity-commanded joints) into its position
+targets, and ros2_control reads the arm's states from the lobby's control states
+(`/fr3/joint_states_for_control`, the FR3's ROS profile): those targets, not the lobby's
+measurements. Through the network to the browser and back, measurements come a few hundred ms
+late, and giskard, closing its loop on them, overshoots and oscillates without reaching a goal.
+The lobby follows the targets; when the arm is idle and the lobby's arm is more than 0.1 rad
+from them (moved in the lobby), they are reset to it. The Tracy demo does the same
+(`/tracy/joint_states_for_control`). Both need a robot-lobby from 2026-11-13 on (velocity
+joint commands); with an older one, the arm does not move.
 
 ## Panda and giskardpy (real, fake or the lobby's)
 
@@ -154,7 +157,7 @@ as for the FR3.
 Behind the topics, `python3 -m robot_station.hw` (robot-station's `robot_station` package) integrates the velocities into
 position commands for its driver, through its safety layer (joint limits, `SPEED`, commands
 older than 0.3 s hold the robot, a fault when the robot falls 0.5 rad behind), and reports the
-commanded positions to ros2_control (giskard closes its loop on them, as with the lobby relay),
+commanded positions to ros2_control (giskard closes its loop on them, as on the lobby),
 the measured ones on `/panda/hw/measured_joint_states`. The gripper is its action
 `/panda/hw/gripper_cmd` (`control_msgs/ParallelGripperCommand`, `finger_joint1`: each finger's
 opening, 0-0.04 m), not a controller. The robot holds, disabled, until `/panda/hw/enable`
